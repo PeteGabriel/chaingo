@@ -2,21 +2,22 @@ package main
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 )
 
 func main() {
-	bc := NewBlockchain()
 
-	bc.AddBlock("Send 1 BTC to Bob")
-	bc.AddBlock("Send 2 more BTC to Alice")
-
-	for _, block := range bc.blocks {
-		fmt.Printf("Prev. hash: %p\n", block.PrevBlockHash)
-		fmt.Printf("Data: %s\n", block.Data)
-		fmt.Printf("Hash: %p\n", block.Hash)
-		pow := NewProofOfWork(block)
-		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
-		fmt.Println()
+	if err := run(); err != nil {
+		fmt.Printf("%v", err)
+		os.Exit(1)
 	}
+}
+
+func run() error {
+	bc := NewBlockchain()
+	defer bc.db.Close()
+
+	cli := CLI{bc}
+	cli.Run()
+	return nil
 }
