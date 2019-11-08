@@ -11,3 +11,11 @@ Initial implementation:
 Implementation with CLI:
 
 ![Second Phase](https://i.imgur.com/mJaPj97.png)
+
+```
+main.exe printchain
+```
+
+```
+main.exe addblock -data <string content>
+```
