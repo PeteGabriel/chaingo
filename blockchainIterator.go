@@ -1,7 +1,11 @@
 package main
 
-import "github.com/boltdb/bolt"
+import (
+	"github.com/boltdb/bolt"
+	"log"
+)
 
+const blockBucket = "blocks"
 /*
 BlockchainIterator exists because we don’t want to load all the blocks into memory
 so we’ll read them one by one.
@@ -14,13 +18,17 @@ type BlockchainIterator struct {
 
 func (bci *BlockchainIterator) Next() *Block {
 	var block *Block
-	bci.db.View(func(tx *bolt.Tx) error {
+	err := bci.db.View(func(tx *bolt.Tx) error {
 
-		b := tx.Bucket([]byte(BlocksBucket))
+		b := tx.Bucket([]byte(blockBucket))
 		encodedBlock := b.Get(bci.currentHash)
 		block = DeserializeBlock(encodedBlock)
 		return nil
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	bci.currentHash = block.PrevBlockHash
 	return block

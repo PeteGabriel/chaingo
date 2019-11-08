@@ -31,7 +31,6 @@ func NewProofOfWork(b *Block) *ProofOfWork {
 */
 func (pow *ProofOfWork) Run() (int, []byte) {
 	var hashInt big.Int
-	var hash [32]byte
 	nonce := 0
 	fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Data)
 	for nonce < maxNonce {
@@ -44,9 +43,11 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 		} else {
 			nonce++
 		}
+
+		return nonce, hash[:]
 	}
 	fmt.Print("\n\n")
-	return nonce, hash[:]
+	return nonce, []byte{}
 }
 
 func (pow *ProofOfWork) Validate() bool {
