@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+
 )
 
 const targetBits = 24
@@ -32,7 +33,7 @@ func NewProofOfWork(b *Block) *ProofOfWork {
 func (pow *ProofOfWork) Run() (int, []byte) {
 	var hashInt big.Int
 	nonce := 0
-	fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Data)
+	fmt.Printf("Mining the block containing \"%x\"\n", pow.block.HashTransactions())
 	for nonce < maxNonce {
 		data := pow.prepareData(nonce)
 		hash := sha256.Sum256(data)
@@ -63,7 +64,7 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
 			pow.block.PrevBlockHash,
-			pow.block.Data,
+			pow.block.HashTransactions(),
 			intToHex(pow.block.Timestamp),
 			intToHex(int64(targetBits)),
 			intToHex(int64(nonce)),

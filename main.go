@@ -14,10 +14,9 @@ func main() {
 }
 
 func run() error {
-	bc := NewBlockchain()
-	defer bc.db.Close()
+	//defer bc.db.Close()
 
-	cli := CLI{bc}
+	cli := CLI{}
 	cli.Run()
 	return nil
 }

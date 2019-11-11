@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
 	"log"
 	"time"
@@ -10,14 +11,19 @@ import (
 //Block represents the stored valuable info
 type Block struct {
 	Timestamp     int64
-	Data          []byte
+	Transactions  []*Transaction
 	PrevBlockHash []byte
 	Hash          []byte
 	Nonce         int
 }
 
-func NewBlock(data string, prevBlockHash []byte) *Block {
-	block := &Block{time.Now().Unix(), []byte(data), prevBlockHash, []byte{}, 0}
+func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block {
+	block := &Block{
+		time.Now().Unix(),
+		transactions,
+		prevBlockHash,
+		[]byte{},
+		0}
 	pow := NewProofOfWork(block)
 	nonce, hash := pow.Run()
 	block.Hash = hash[:]
@@ -34,6 +40,21 @@ func (b *Block) Serialize() []byte {
 	}
 	return result.Bytes()
 }
+
+// HashTransactions hashes of each transaction,
+// concatenate them,
+// and get a hash of the concatenated combination.
+func (b *Block) HashTransactions() []byte {
+	var hashes []byte
+	for _, t := range b.Transactions  {
+		for h := range t.ID {
+			hashes = append(hashes, byte(h))
+		}
+	}
+	hash := sha256.Sum256(hashes)
+	return hash[:]
+}
+
 
 func DeserializeBlock(d []byte) *Block {
 	var block Block

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"github.com/boltdb/bolt"
 	"log"
 	"os"
@@ -10,13 +11,15 @@ const dbFile = "some_file_name"
 
 var blocksBucket string = "blocks"
 
+const genesisCoinbaseData = "Genesis Block"
+
 //Blockchain is an ordered linked-set of blocks
 type Blockchain struct {
 	tip []byte
 	db  *bolt.DB
 }
 
-func (bc *Blockchain) AddBlock(data string) {
+func (bc *Blockchain) AddBlock(data []*Transaction) {
 	var lastHash []byte
 	_ = bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
@@ -52,8 +55,8 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 }
 
 //NewGenesisBlock creates first block of chain
-func NewGenesisBlock() *Block {
-	return NewBlock("Genesis Block", []byte{})
+func NewGenesisBlock(coinbase *Transaction) *Block {
+	return NewBlock([]*Transaction{coinbase}, []byte{})
 }
 
 /*
@@ -68,7 +71,7 @@ If there’s no existing blockchain:
 	Save the genesis block’s hash as the last block hash.
 	Create a new Blockchain instance with its tip pointing at the genesis block.
 */
-func NewBlockchain() *Blockchain {
+func NewBlockchain(addr string) *Blockchain {
 	var tip []byte
 	db, err := bolt.Open(dbFile, os.ModeAppend, nil)
 	if err != nil {
@@ -77,7 +80,7 @@ func NewBlockchain() *Blockchain {
 	_ = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		if b == nil {
-			genesis := NewGenesisBlock()
+			genesis := NewGenesisBlock(NewCoinbase(addr, genesisCoinbaseData))
 			b, err := tx.CreateBucket([]byte(blocksBucket))
 			if err != nil {
 				log.Fatal(err)
@@ -94,4 +97,59 @@ func NewBlockchain() *Blockchain {
 	bc := Blockchain{tip, db}
 
 	return &bc
+}
+
+
+func (bc *Blockchain) findUnspentTransactions(addr string) []Transaction {
+	var unspent []Transaction
+	spent := make(map[string][]int)
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+		for _, t := range block.Transactions{
+			id := hex.EncodeToString(t.ID)
+		Outputs:
+			for outIdx, out := range t.Vout  {
+				//check if the output was already spent
+				if spent[id] != nil {
+					for _, spentOut := range spent[id] {
+						if spentOut == outIdx {
+							continue Outputs
+						}
+					}
+				}
+				if out.CanBeUnlockedWith(addr) {
+					unspent = append(unspent, *t)
+				}
+			}
+
+			if t.IsCoinbase() == false {
+				for _, in := range t.Vin {
+					if in.CanUnlockOutputWith(addr) {
+						inTxID := hex.EncodeToString(in.Txid)
+						spent[inTxID] = append(spent[inTxID], in.Vout)
+					}
+				}
+			}
+
+			if len(block.PrevBlockHash) == 0 {
+				break
+			}
+		}
+		return unspent
+	}
+}
+
+func (bc *Blockchain) FindUnspentOutputs(addr string) []TXOutput {
+	var unspentOutputs []TXOutput
+	unspentTransactions := bc.findUnspentTransactions(addr)
+	for _, t := range unspentTransactions {
+		for _, output := range t.Vout {
+			if output.CanBeUnlockedWith(addr) {
+				unspentOutputs = append(unspentOutputs, output)
+			}
+		}
+	}
+	return unspentOutputs
 }
