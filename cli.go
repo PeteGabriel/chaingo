@@ -23,7 +23,7 @@ func (cli *CLI) Run() {
 	addBlockData := addBlockCmd.String("data", "", "Block data")
 
 	getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
-	getBalanceData := addBlockCmd.String("address", "", "Wallet address")
+	getBalanceData := getBalanceCmd.String("address", "", "Wallet address")
 
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
 

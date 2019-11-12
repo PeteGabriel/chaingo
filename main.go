@@ -14,8 +14,6 @@ func main() {
 }
 
 func run() error {
-	//defer bc.db.Close()
-
 	cli := CLI{}
 	cli.Run()
 	return nil
