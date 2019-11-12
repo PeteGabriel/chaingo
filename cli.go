@@ -27,6 +27,10 @@ func (cli *CLI) Run() {
 
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
 
+	if len(os.Args) <= 1 {
+		cli.printUsage()
+		os.Exit(1)
+	}
 	switch os.Args[1] {
 		case "addblock":
 			_ = addBlockCmd.Parse(os.Args[2:])
@@ -91,7 +95,13 @@ func (cli *CLI) printChain() {
 }
 
 func (cli *CLI) printUsage() {
-
+	fmt.Println("Usage:")
+	fmt.Println("\tmain.exe [--option] [<arguments>]")
+	fmt.Println("Options:")
+	fmt.Println("\t--addblock\t\t\tAdd a new block to the chain")
+	fmt.Println("\t--printchain\t\tPrint the whole chain")
+	fmt.Println("\t--createblockchain\tCreate a new blockchain")
+	fmt.Println("\t--getbalance\t\tGet balance")
 }
 
 func (cli *CLI) validateArgs() {
