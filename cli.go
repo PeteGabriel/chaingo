@@ -17,7 +17,7 @@ func (cli *CLI) Run() {
 
 	//possible commands
 	createBlockchainCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
-	createBlockchainData := createBlockchainCmd.String("address", "",  "Wallet address")
+	createBlockchainData := createBlockchainCmd.String("address", "", "Wallet address")
 
 	addBlockCmd := flag.NewFlagSet("addblock", flag.ExitOnError)
 	addBlockData := addBlockCmd.String("data", "", "Block data")
@@ -27,22 +27,25 @@ func (cli *CLI) Run() {
 
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
 
-	if len(os.Args) <= 1 {
-		cli.printUsage()
-		os.Exit(1)
-	}
-	switch os.Args[1] {
+
+	if len(os.Args) >= 1 {
+		switch os.Args[1] {
 		case "addblock":
 			_ = addBlockCmd.Parse(os.Args[2:])
 		case "printchain":
 			_ = printChainCmd.Parse(os.Args[2:])
-	    case "createblockchain":
-	    	_ = createBlockchainCmd.Parse(os.Args[2:])
-	    case "getbalance":
-		    _ = getBalanceCmd.Parse(os.Args[2:])
-	    default:
+		case "createblockchain":
+			_ = createBlockchainCmd.Parse(os.Args[2:])
+		case "getbalance":
+			_ = getBalanceCmd.Parse(os.Args[2:])
+		default:
 			cli.printUsage()
 			os.Exit(1)
+		}
+	} else {
+		cli.printUsage()
+		os.Exit(1)
+		return
 	}
 
 	if addBlockCmd.Parsed() {
@@ -73,10 +76,14 @@ func (cli *CLI) addBlock(data string) {
 
 func (cli *CLI) createBlockchain(addr string) {
 	cli.bc = NewBlockchain(addr)
-	fmt.Println("Success!")
+	fmt.Println("Done!")
 }
 
 func (cli *CLI) printChain() {
+	if cli.bc == nil {
+		fmt.Println("No blockchain has been created yet.")
+		return
+	}
 	bci := cli.bc.Iterator()
 	for {
 		block := bci.Next()
@@ -107,7 +114,6 @@ func (cli *CLI) printUsage() {
 func (cli *CLI) validateArgs() {
 
 }
-
 
 func (cli *CLI) getBalance(addr string) {
 	bc := NewBlockchain(addr)
