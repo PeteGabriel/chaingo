@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"encoding/hex"
+	"fmt"
+	"log"
+)
 
 
 const subsidy = 10
@@ -51,4 +55,36 @@ func NewCoinbase(to, data string) *Transaction {
 	t.setID()
 
 	return &t
+}
+
+func NewTransaction(from, to string, amount int, bc *Blockchain) *Transaction{
+	var inputs []TXInput
+	var outputs []TXOutput
+
+	acc, validOutputs := bc.FindSpendableOutputs(from, amount)
+
+	//build a list of inputs
+	for idx, outputs := range validOutputs {
+		idx, err := hex.DecodeString(idx)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, output := range outputs {
+			input := TXInput{idx, output, from}
+			inputs = append(inputs, input)
+		}
+	}
+
+	//build a list of outputs
+	outputs = append(outputs, TXOutput{amount, to})
+	if acc > amount {
+		outputs = append(outputs, TXOutput{acc - amount, from}) // a change
+	}
+
+	tx := Transaction{nil, inputs, outputs}
+	tx.setID()
+
+	return &tx
 }

@@ -25,6 +25,11 @@ func (cli *CLI) Run() {
 	getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
 	getBalanceData := getBalanceCmd.String("address", "", "Wallet address")
 
+	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
+	from := sendCmd.String("from", "", "Sender address")
+	to := sendCmd.String("to", "", "Receiver address")
+	amount := sendCmd.Int("amount", 0, "Amount to send")
+
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
 
 
@@ -38,6 +43,8 @@ func (cli *CLI) Run() {
 			_ = createBlockchainCmd.Parse(os.Args[2:])
 		case "getbalance":
 			_ = getBalanceCmd.Parse(os.Args[2:])
+		case "send":
+			_ = sendCmd.Parse(os.Args[2:])
 		default:
 			cli.printUsage()
 			os.Exit(1)
@@ -66,6 +73,10 @@ func (cli *CLI) Run() {
 
 	if getBalanceCmd.Parsed() {
 		cli.getBalance(*getBalanceData)
+	}
+
+	if sendCmd.Parsed() {
+		cli.send(*from, *to, *amount)
 	}
 }
 
@@ -126,4 +137,13 @@ func (cli *CLI) getBalance(addr string) {
 		balance += output.Value
 	}
 	fmt.Printf("Balance of '%s': %d\n", addr, balance)
+}
+
+
+func (cli *CLI) send(from, to string, amount int) {
+	bc := NewBlockchain(from)
+	defer bc.db.Close()
+	t := NewTransaction(from, to, amount, bc)
+	bc.AddBlock([]*Transaction{t})
+	fmt.Println("Success!")
 }

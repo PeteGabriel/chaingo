@@ -153,3 +153,28 @@ func (bc *Blockchain) FindUnspentOutputs(addr string) []TXOutput {
 	}
 	return unspentOutputs
 }
+
+//FindSpendableOutputs find all unspent outputs. It groups by transaction IDs.
+func (bc *Blockchain) FindSpendableOutputs(from string, amount int) (int, map[string][]int) {
+	unspentOutputs := make(map[string][]int)
+	unspentTransactions := bc.findUnspentTransactions(from)
+	acc := 0
+
+	Work:
+		for _, t := range unspentTransactions {
+			for idx,output := range t.Vout {
+				if output.CanBeUnlockedWith(from) && acc < amount {
+					acc += output.Value
+					txID := hex.EncodeToString(t.ID)
+
+					unspentOutputs[txID] = append(unspentOutputs[txID], idx)
+
+					if acc > amount {
+						break Work
+					}
+				}
+			}
+		}
+
+	return acc, unspentOutputs
+}
