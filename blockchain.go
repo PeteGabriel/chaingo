@@ -7,12 +7,12 @@ import (
 	"os"
 )
 
-const dbFile = "some_file_name"
-
-var blocksBucket string = "blocks"
-
-const genesisCoinbaseData = "Genesis Block"
-
+const (
+	dbFile = "some_file_name"
+	blocksBucket = "blocks"
+	genesisCoinbaseData = "Genesis Block"
+	bucketName = "l"
+)
 //Blockchain is an ordered linked-set of blocks
 type Blockchain struct {
 	tip []byte
@@ -23,18 +23,18 @@ func (bc *Blockchain) AddBlock(data []*Transaction) {
 	var lastHash []byte
 	_ = bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
-		lastHash = b.Get([]byte("l"))
+		lastHash = b.Get([]byte(bucketName))
 		return nil
 	})
 
 	newBlock := NewBlock(data, lastHash)
-	error := bc.db.Update(func(tx *bolt.Tx) error {
+	err := bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		err := b.Put(newBlock.Hash, newBlock.Serialize())
 		if err != nil {
 			return err
 		}
-		err = b.Put([]byte("l"), newBlock.Hash)
+		err = b.Put([]byte(bucketName), newBlock.Hash)
 		if err != nil {
 			return err
 		}
@@ -43,8 +43,8 @@ func (bc *Blockchain) AddBlock(data []*Transaction) {
 
 		return nil
 	})
-	if error != nil {
-		log.Fatal(error)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -55,8 +55,8 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 }
 
 //NewGenesisBlock creates first block of chain
-func NewGenesisBlock(coinbase *Transaction) *Block {
-	return NewBlock([]*Transaction{coinbase}, []byte{})
+func NewGenesisBlock(cb *Transaction) *Block {
+	return NewBlock([]*Transaction{cb}, []byte{})
 }
 
 /*
@@ -86,10 +86,10 @@ func NewBlockchain(addr string) *Blockchain {
 				log.Fatal(err)
 			}
 			_ = b.Put(genesis.Hash, genesis.Serialize())
-			_ = b.Put([]byte("l"), genesis.Hash)
+			_ = b.Put([]byte(bucketName), genesis.Hash)
 			tip = genesis.Hash
 		} else {
-			tip = b.Get([]byte("l"))
+			tip = b.Get([]byte(bucketName))
 		}
 		return nil
 	})

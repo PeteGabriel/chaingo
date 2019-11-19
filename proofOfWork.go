@@ -10,8 +10,10 @@ import (
 
 )
 
-const targetBits = 24
-const maxNonce = math.MaxInt64
+const (
+	targetBits = 24
+	maxNonce = math.MaxInt64
+)
 
 type ProofOfWork struct {
 	block  *Block
