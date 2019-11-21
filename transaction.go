@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
+	"encoding/gob"
 	"fmt"
 	"log"
 )
@@ -28,7 +31,19 @@ type TXInput struct {
 }
 
 func (t *Transaction) setID(){
-  t.ID = []byte{1} //TODO change this to something random
+  var encoded bytes.Buffer
+  var hash [32]byte
+
+  //Encode a transaction to calculate the hash later
+  enc := gob.NewEncoder(&encoded)
+  err := enc.Encode(t)
+  if err != nil {
+  	log.Panic(err)
+  }
+
+  hash = sha256.Sum256(encoded.Bytes())
+  //Since each hash is unique, it helps applying it to the ID field.
+  t.ID = hash[:]
 }
 
 func (in *TXInput) CanUnlockOutputWith(unlockingData string) bool {
