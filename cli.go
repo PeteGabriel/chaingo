@@ -77,10 +77,17 @@ func (cli *CLI) Run() {
 	}
 
 	if create.Parsed() {
-		cli.createBlockchain(*createData)
+		err := cli.createBlockchain(*createData)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	if getBalance.Parsed() {
+		if *getBalanceData == "" {
+			getBalance.Usage()
+			os.Exit(1)
+		}
 		err := cli.getBalance(*getBalanceData)
 		if err != nil {
 			log.Fatal(err)
@@ -88,6 +95,10 @@ func (cli *CLI) Run() {
 	}
 
 	if send.Parsed() {
+		if *from == "" || *to == "" || *amount <= 0 {
+			send.Usage()
+			os.Exit(1)
+		}
 		err := cli.send(*from, *to, *amount)
 		if err != nil {
 			log.Fatal(err)
@@ -100,9 +111,10 @@ func (cli *CLI) addBlock(data string) {
 	fmt.Println("Success!")
 }
 
-func (cli *CLI) createBlockchain(addr string) {
-	cli.bc = NewBlockchain(addr)
+func (cli *CLI) createBlockchain(addr string)  error{
+	cli.bc = CreateBlockchain(addr)
 	fmt.Println("Done!")
+	return cli.bc.db.Close()
 }
 
 func (cli *CLI) printChain() {
@@ -115,10 +127,9 @@ func (cli *CLI) printChain() {
 		block := bci.Next()
 
 		fmt.Printf("Prev. hash: %x\n", block.PrevBlockHash)
-		fmt.Printf("Transactions: %s\n", block.Transactions)
 		fmt.Printf("Hash: %x\n", block.Hash)
 		pow := NewProofOfWork(block)
-		fmt.Printf("Proof of Work: %s\n", strconv.FormatBool(pow.Validate()))
+		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
 		fmt.Println()
 
 		if len(block.PrevBlockHash) == 0 {
@@ -159,7 +170,7 @@ func (cli *CLI) getBalance(addr string) error {
 func (cli *CLI) send(from, to string, amount int) error {
 	bc := NewBlockchain(from)
 	t := NewTransaction(from, to, amount, bc)
-	bc.AddBlock([]*Transaction{t})
+	bc.MineBlock([]*Transaction{t})
 	fmt.Println("Success!")
 	return bc.db.Close()
 }

@@ -35,7 +35,7 @@ func NewProofOfWork(b *Block) *ProofOfWork {
 func (pow *ProofOfWork) Run() (int, []byte) {
 	var hashInt big.Int
 	nonce := 0
-	fmt.Printf("Mining the block: \"%x\"\n", pow.block.HashTransactions())
+	fmt.Printf("Mining a new block")
 	for nonce < maxNonce {
 		data := pow.prepareData(nonce)
 		hash := sha256.Sum256(data)
