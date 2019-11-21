@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/gob"
+	"encoding/hex"
 	"fmt"
 	"log"
+	"os"
 )
 
 
@@ -77,6 +78,11 @@ func NewTransaction(from, to string, amount int, bc *Blockchain) *Transaction{
 	var outputs []TXOutput
 
 	acc, validOutputs := bc.FindSpendableOutputs(from, amount)
+
+	if acc < amount {
+		fmt.Println("ERROR: Not enough funds")
+		os.Exit(1)
+	}
 
 	//build a list of inputs
 	for idx, outputs := range validOutputs {

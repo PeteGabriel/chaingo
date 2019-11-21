@@ -22,14 +22,17 @@ type Blockchain struct {
 
 func (bc *Blockchain) MineBlock(transactions  []*Transaction) {
 	var lastHash []byte
-	_ = bc.db.View(func(tx *bolt.Tx) error {
+	err := bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		lastHash = b.Get([]byte(bucketName))
 		return nil
 	})
+	if err != nil {
+		log.Panic(err)
+	}
 
 	newBlock := NewBlock(transactions, lastHash)
-	err := bc.db.Update(func(tx *bolt.Tx) error {
+	err = bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		err := b.Put(newBlock.Hash, newBlock.Serialize())
 		if err != nil {
@@ -45,7 +48,7 @@ func (bc *Blockchain) MineBlock(transactions  []*Transaction) {
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 }
 
@@ -73,8 +76,7 @@ If there’s no existing blockchain:
 	Create a new Blockchain instance with its tip pointing at the genesis block.
 */
 func NewBlockchain(addr string) *Blockchain {
-
-	if dbExists() == false {
+	if !dbExists() {
 		fmt.Println("No existing blockchain found. Create one first.")
 		os.Exit(1)
 	}
@@ -136,6 +138,12 @@ func CreateBlockchain(addr string) *Blockchain {
 
 		return nil
 	})
+
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return &(Blockchain{tip, db})
 }
 
 
