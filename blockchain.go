@@ -160,6 +160,8 @@ func (bc *Blockchain) findUnspentTransactions(addr string) []Transaction {
 	spent := make(map[string][]int)
 	bci := bc.Iterator()
 
+	pubKey := PublicKeyHash(addr)
+
 	for {
 		block := bci.Next()
 		for _, t := range block.Transactions{
@@ -174,14 +176,14 @@ func (bc *Blockchain) findUnspentTransactions(addr string) []Transaction {
 						}
 					}
 				}
-				if out.CanBeUnlockedWith(addr) {
+				if out.IsLockedWithKey(pubKey) {
 					unspent = append(unspent, *t)
 				}
 			}
 
 			if t.IsCoinbase() == false {
 				for _, in := range t.Vin {
-					if in.CanUnlockOutputWith(addr) {
+					if in.UsesKey(pubKey) {
 						inTxID := hex.EncodeToString(in.Txid)
 						spent[inTxID] = append(spent[inTxID], in.Vout)
 					}
@@ -199,9 +201,10 @@ func (bc *Blockchain) findUnspentTransactions(addr string) []Transaction {
 func (bc *Blockchain) FindUnspentOutputs(addr string) []TXOutput {
 	var unspentOutputs []TXOutput
 	unspentTransactions := bc.findUnspentTransactions(addr)
+	pubKey := PublicKeyHash(addr)
 	for _, t := range unspentTransactions {
 		for _, output := range t.Vout {
-			if output.CanBeUnlockedWith(addr) {
+			if output.IsLockedWithKey(pubKey) {
 				unspentOutputs = append(unspentOutputs, output)
 			}
 		}
@@ -214,11 +217,12 @@ func (bc *Blockchain) FindSpendableOutputs(from string, amount int) (int, map[st
 	unspentOutputs := make(map[string][]int)
 	unspentTransactions := bc.findUnspentTransactions(from)
 	acc := 0
+	pubKey := PublicKeyHash(from)
 
 	Work:
 		for _, t := range unspentTransactions {
 			for idx,output := range t.Vout {
-				if output.CanBeUnlockedWith(from) && acc < amount {
+				if output.IsLockedWithKey(pubKey) && acc < amount {
 					acc += output.Value
 					txID := hex.EncodeToString(t.ID)
 

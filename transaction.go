@@ -21,14 +21,14 @@ type Transaction struct {
 
 type TXOutput struct {
 	Value        int
-	//For simplicity: user defined wallet address
-	ScriptPubKey string
+	PubKeyHash []byte
 }
 
 type TXInput struct {
 	Txid      []byte //the ID of such transaction
 	Vout      int   //n index of an output in the transaction
-	ScriptSig string
+	Signature []byte
+	PubKeyRaw []byte
 }
 
 func (t *Transaction) setID(){
@@ -47,16 +47,22 @@ func (t *Transaction) setID(){
   t.ID = hash[:]
 }
 
-func (in *TXInput) CanUnlockOutputWith(unlockingData string) bool {
-	return in.ScriptSig == unlockingData
+func (in *TXInput) UsesKey(publicKeyHash []byte) bool {
+	lockingKey := HashPubKey(in.PubKeyRaw)
+	return bytes.Compare(lockingKey, publicKeyHash) == 0
 }
 
-func (out *TXOutput) CanBeUnlockedWith(unlockingData string) bool {
-	return out.ScriptPubKey == unlockingData
+func (out *TXOutput) Lock(addr []byte) {
+	pubKeyHash := PublicKeyHash(string(addr))
+	out.PubKeyHash = pubKeyHash
+}
+
+func (out *TXOutput) IsLockedWithKey(pubKeyHash []byte) bool {
+	return bytes.Compare(out.PubKeyHash, pubKeyHash) == 0
 }
 
 func (t *Transaction) IsCoinbase() bool {
-	return len(t.Vin) == 0
+	return len(t.Vin) == 1 && len(t.Vin[0].Txid) == 0 && t.Vin[0].Vout == -1
 }
 
 //NewCoinbase creates a  special type of transactions,

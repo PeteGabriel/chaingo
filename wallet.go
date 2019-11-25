@@ -44,7 +44,7 @@ const version = "version"
 
 func (w *Wallet) GetAddress() []byte {
 	// 3 parts of getting an address:
-	pubKeyHash := hashPubKey(w.PublicKey)
+	pubKeyHash := HashPubKey(w.PublicKey)
 	version := append([]byte(version), pubKeyHash...)
 	checksum := checksum(version)
 
@@ -53,7 +53,7 @@ func (w *Wallet) GetAddress() []byte {
 	return addr
 }
 
-func hashPubKey(pubKey []byte) []byte {
+func HashPubKey(pubKey []byte) []byte {
 	publicSHA256 := sha256.Sum256(pubKey)
 
 	hasher := ripemd160.New()
@@ -77,4 +77,16 @@ func checksum(payload []byte) []byte {
 
 func encode(payload []byte) []byte {
 	return []byte(base58.Encode(payload))
+}
+
+func Decode(payload string) []byte {
+	return base58.Decode(payload)
+}
+
+//PublicKeyHash returns the public key part from an address.
+func PublicKeyHash(addr string) []byte {
+	pubKeyHash := Decode(addr)
+	// Version_PublicKeyHash_CheckSum
+	// Hash is from the first byte until the last four
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash) - 4]
 }
