@@ -1,58 +1,40 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
+	cmds "./cmd"
 )
 
 type CLI struct {
 	bc *Blockchain
 }
 
-const (
-	createCmd = "createblockchain"
-	addBlockCmd = "addblock"
-	getBalanceCmd = "getbalance"
-	sendCmd = "send"
-	printCmd = "printchain"
-)
 
 //Run is the entry point of cli.
 func (cli *CLI) Run() {
 	cli.validateArgs()
 
 	//possible commands
-	create := flag.NewFlagSet(createCmd, flag.ExitOnError)
-	createData := create.String("address", "", "Wallet address")
-
-	addBlock := flag.NewFlagSet(addBlockCmd, flag.ExitOnError)
-	addBlockData := addBlock.String("data", "", "Block data")
-
-	getBalance := flag.NewFlagSet(getBalanceCmd, flag.ExitOnError)
-	getBalanceData := getBalance.String("address", "", "Wallet address")
-
-	send := flag.NewFlagSet(sendCmd, flag.ExitOnError)
-	from := send.String("from", "", "Sender address")
-	to := send.String("to", "", "Receiver address")
-	amount := send.Int("amount", 0, "Amount to send")
-
-	printChain := flag.NewFlagSet(printCmd, flag.ExitOnError)
-
+	wallet := cmds.ConfigureCreateWalletCmd()
+	create, createData := cmds.ConfigureCreateChainCmd()
+	getBalance, getBalanceData := cmds.ConfigureBalanceCmd()
+	send, from, to, amount := cmds.ConfigureSendCmd()
+	printChain := cmds.ConfigurePrintCmd()
 
 	if len(os.Args) >= 1 {
 		switch os.Args[1] {
-		case addBlockCmd:
-			_ = addBlock.Parse(os.Args[2:])
-		case printCmd:
+		case cmds.CreateWalletCmdId:
+			_ = wallet.Parse(os.Args[2:])
+		case cmds.PrintCmdId:
 			_ = printChain.Parse(os.Args[2:])
-		case createCmd:
+		case cmds.CreateChainCmdId:
 			_ = create.Parse(os.Args[2:])
-		case getBalanceCmd:
+		case cmds.BalanceCmdId:
 			_ = getBalance.Parse(os.Args[2:])
-		case sendCmd:
+		case cmds.SendCmdId:
 			_ = send.Parse(os.Args[2:])
 		default:
 			cli.printUsage()
@@ -64,12 +46,8 @@ func (cli *CLI) Run() {
 		return
 	}
 
-	if addBlock.Parsed() {
-		if *addBlockData == "" {
-			addBlock.Usage() //print instructions
-			os.Exit(1)
-		}
-		cli.addBlock(*addBlockData)
+	if wallet.Parsed() {
+		cli.createWallet()
 	}
 
 	if printChain.Parsed() {
@@ -106,9 +84,9 @@ func (cli *CLI) Run() {
 	}
 }
 
-func (cli *CLI) addBlock(data string) {
-	//cli.bc.AddBlock(data)
-	fmt.Println("Success!")
+func (cli *CLI) createWallet() {
+
+	fmt.Printf("Your new address: %x\n", )
 }
 
 func (cli *CLI) createBlockchain(addr string)  error{
@@ -142,10 +120,10 @@ func (cli *CLI) printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("\tmain.exe [--option] [<arguments>]")
 	fmt.Println("Options:")
-	fmt.Printf("\t--%s\t\t\tAdd a new block to the chain\n", addBlockCmd)
-	fmt.Printf("\t--%s\t\tPrint the whole chain\n", printCmd)
-	fmt.Printf("\t--%s\tCreate a new blockchain\n", createCmd)
-	fmt.Printf("\t--%s\t\tGet balance\n", getBalanceCmd)
+	fmt.Printf("\t--%s\t\t\tCreate a new wallet address\n", cmds.CreateWalletCmdId)
+	fmt.Printf("\t--%s\t\tPrint the whole chain\n", cmds.PrintCmdId)
+	fmt.Printf("\t--%s\tCreate a new blockchain\n", cmds.CreateChainCmdId)
+	fmt.Printf("\t--%s\t\tGet balance\n", cmds.BalanceCmdId)
 }
 
 func (cli *CLI) validateArgs() {
