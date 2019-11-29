@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 )
 
@@ -31,7 +35,8 @@ type TXInput struct {
 	PubKeyRaw []byte
 }
 
-func (t *Transaction) setID(){
+//Hash method serializes the transaction and hashes it with the SHA-256 algorithm.
+func (t *Transaction) Hash() []byte{
   var encoded bytes.Buffer
   var hash [32]byte
 
@@ -44,7 +49,7 @@ func (t *Transaction) setID(){
 
   hash = sha256.Sum256(encoded.Bytes())
   //Since each hash is unique, it helps applying it to the ID field.
-  t.ID = hash[:]
+  return hash[:]
 }
 
 func (in *TXInput) UsesKey(publicKeyHash []byte) bool {
@@ -74,7 +79,7 @@ func NewCoinbase(to, data string) *Transaction {
 	in := TXInput{[]byte{}, -1, data}
 	out :=  TXOutput{subsidy, to}
 	t := Transaction{nil, []TXInput{in}, []TXOutput{out}}
-	t.setID()
+	t.ID = t.Hash()
 
 	return &t
 }
@@ -111,7 +116,92 @@ func NewTransaction(from, to string, amount int, bc *Blockchain) *Transaction{
 	}
 
 	tx := Transaction{nil, inputs, outputs}
-	tx.setID()
+	tx.ID = tx.Hash()
 
 	return &tx
+}
+
+/*
+Considering that transactions unlock previous outputs,
+redistribute their values, and lock new outputs, the following data must be signed:
+
+1 - Public key hashes stored in unlocked outputs. This identifies “sender” of a transaction.
+2 - Public key hashes stored in new, locked, outputs. This identifies “recipient” of a transaction.
+3 - Values of new outputs.
+ */
+func (tx *Transaction) Sign(privK ecdsa.PrivateKey, prevTxs map[string]Transaction) error {
+	if tx.IsCoinbase() {
+		//no real inputs in them.
+		return nil
+	}
+
+	//include all inputs and outputs & exclude public key and signature.
+	txCopy := tx.TrimmedCopy()
+
+	for inID, vin := range txCopy.Vin {
+		prevTx := prevTxs[hex.EncodeToString(vin.Txid)]
+		txCopy.Vin[inID].Signature = nil
+		txCopy.Vin[inID].PubKeyRaw = prevTx.Vout[vin.Vout].PubKeyHash
+		txCopy.ID = txCopy.Hash()
+		txCopy.Vin[inID].PubKeyRaw = nil
+
+		r, s, err := ecdsa.Sign(rand.Reader, &privK, txCopy.ID)
+		if err != nil {
+			return err
+		}
+		signature := append(r.Bytes(), s.Bytes()...)
+
+		tx.Vin[inID].Signature = signature
+	}
+
+	return nil
+}
+
+//TrimmedCopy will include all the inputs and outputs, but TXInput.Signature and TXInput.PubKey are set to nil.
+func (tx *Transaction) TrimmedCopy() Transaction {
+	var inputs []TXInput
+	var outputs []TXOutput
+
+	for _, vin := range tx.Vin {
+		inputs = append(inputs, TXInput{vin.Txid, vin.Vout, nil, nil})
+	}
+
+	for _, vout := range tx.Vout {
+		outputs = append(outputs, TXOutput{vout.Value, vout.PubKeyHash})
+	}
+
+	copy := Transaction{tx.ID, inputs, outputs}
+	return copy
+}
+
+//Verify that a transaction is valid
+func (t *Transaction) Verify(prevTxs map[string]Transaction) bool {
+	copy := t.TrimmedCopy()
+	curve := elliptic.P256()
+
+	for inID, vin := range t.Vin {
+		prevTx := prevTxs[hex.EncodeToString(vin.Txid)]
+		copy.Vin[inID].Signature = nil
+		copy.Vin[inID].PubKeyRaw = prevTx.Vout[vin.Vout].PubKeyHash
+		copy.ID = copy.Hash()
+		copy.Vin[inID].PubKeyRaw = nil
+
+		r := big.Int{}
+		s := big.Int{}
+		sigLen := len(vin.Signature)
+		r.SetBytes(vin.Signature[:(sigLen / 2)])
+		s.SetBytes(vin.Signature[(sigLen / 2):])
+
+		x := big.Int{}
+		y := big.Int{}
+		keyLen := len(vin.PubKeyRaw)
+		x.SetBytes(vin.PubKeyRaw[:(keyLen / 2)])
+		y.SetBytes(vin.PubKeyRaw[(keyLen / 2):])
+
+		rawPubKey := ecdsa.PublicKey{curve, &x, &y}
+		if ecdsa.Verify(&rawPubKey, copy.ID, &r, &s) == false {
+			return false
+		}
+	}
+	return true
 }
